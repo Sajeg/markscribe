@@ -66,6 +66,7 @@ func main() {
 	/* Wakatime */
 	funcMap["wakatimeData"] = wakatimeData
 	funcMap["wakatimeCategoryBar"] = wakatimeCategoryBar
+	funcMap["wakatimeDoubleCategoryBar"] = wakatimeDoubleCategoryBar
 
 	tpl, err := template.New("tpl").Funcs(funcMap).Parse(string(tplIn))
 	if err != nil {

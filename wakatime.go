@@ -62,7 +62,112 @@ func bar(percentage float64, barWidth int) string {
 	return fmt.Sprintf("%s  %.2f%%", bar, percentage)
 }
 
-func wakatimeCategoryBar(count int, category interface{}) string {
+func wakatimeCategoryBar(count int, category any) string {
+	typedCategory := wakatimeTransformType(category)
+
+	// sort languages by percentage
+	for i := range typedCategory {
+		if i >= count {
+			typedCategory = typedCategory[:count]
+			break
+		}
+		for j := i + 1; j < len(typedCategory); j++ {
+			if typedCategory[i].Percent < typedCategory[j].Percent {
+				typedCategory[i], typedCategory[j] = typedCategory[j], typedCategory[i]
+			}
+		}
+	}
+
+	// get the longest name and time
+	longestName, longestTime := wakatimeOffsets(count, typedCategory)
+
+	for i, c := range typedCategory {
+		if i >= count {
+			break
+		}
+		typedCategory[i].Name = fmt.Sprintf("%-*s", longestName+2, c.Name)
+		typedCategory[i].Digital = fmt.Sprintf("%-*s", longestTime+2, formatTime(c.Hours, c.Minutes, c.Seconds))
+	}
+
+	// generate the lines in the format: name bar percent%
+	var lines []string
+	for _, c := range typedCategory {
+		lines = append(lines, fmt.Sprintf("%s %s %s", c.Name, c.Digital, bar(c.Percent, 25)))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func wakatimeDoubleCategoryBar(title string, category any, title2 string, category2 any, count int) string {
+	typedCategory := wakatimeTransformType(category)
+	typedCategory2 := wakatimeTransformType(category2)
+
+	// sort languages by percentage
+	for i := range typedCategory {
+		if i >= count {
+			typedCategory = typedCategory[:count]
+			break
+		}
+		for j := i + 1; j < len(typedCategory); j++ {
+			if typedCategory[i].Percent < typedCategory[j].Percent {
+				typedCategory[i], typedCategory[j] = typedCategory[j], typedCategory[i]
+			}
+		}
+	}
+
+	for i := range typedCategory2 {
+		if i >= count {
+			typedCategory2 = typedCategory2[:count]
+			break
+		}
+		for j := i + 1; j < len(typedCategory2); j++ {
+			if typedCategory2[i].Percent < typedCategory2[j].Percent {
+				typedCategory2[i], typedCategory2[j] = typedCategory2[j], typedCategory2[i]
+			}
+		}
+	}
+
+	// get the longest name and time from both categories and pick larger values
+	longestName1, longestTime1 := wakatimeOffsets(count, typedCategory)
+	longestName2, longestTime2 := wakatimeOffsets(count, typedCategory2)
+	longestName := max(longestName2, longestName1)
+	longestTime := max(longestTime2, longestTime1)
+
+	for i, c := range typedCategory {
+		if i >= count {
+			break
+		}
+		typedCategory[i].Name = fmt.Sprintf("%-*s", longestName+2, c.Name)
+		typedCategory[i].Digital = fmt.Sprintf("%-*s", longestTime+2, formatTime(c.Hours, c.Minutes, c.Seconds))
+	}
+
+	for i, c := range typedCategory2 {
+		if i >= count {
+			break
+		}
+		typedCategory2[i].Name = fmt.Sprintf("%-*s", longestName+2, c.Name)
+		typedCategory2[i].Digital = fmt.Sprintf("%-*s", longestTime+2, formatTime(c.Hours, c.Minutes, c.Seconds))
+	}
+
+	// generate the lines in the format: name bar percent%
+	var lines []string
+
+	lines = append(lines, title)
+	for _, c := range typedCategory {
+		lines = append(lines, fmt.Sprintf("%s %s %s", c.Name, c.Digital, bar(c.Percent, 25)))
+	}
+
+	lines = append(lines, "")
+
+	lines = append(lines, title2)
+	for _, c := range typedCategory2 {
+		lines = append(lines, fmt.Sprintf("%s %s %s", c.Name, c.Digital, bar(c.Percent, 25)))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func wakatimeTransformType(category any) []WakatimeCategoryType {
 	var typedCategory []WakatimeCategoryType
 
 	switch v := category.(type) {
@@ -87,19 +192,17 @@ func wakatimeCategoryBar(count int, category interface{}) string {
 		panic("unknown category type")
 	}
 
-	// sort languages by percentage
-	for i := range typedCategory {
-		for j := i + 1; j < len(typedCategory); j++ {
-			if typedCategory[i].Percent < typedCategory[j].Percent {
-				typedCategory[i], typedCategory[j] = typedCategory[j], typedCategory[i]
-			}
-		}
-	}
+	return typedCategory
+}
 
+func wakatimeOffsets(count int, typedCategory []WakatimeCategoryType) (int, int) {
 	// pad the name of the language so that they are all equal in lengh to the longest name plus 2 spaces
 	longestName := 0
 	longestTime := 0
-	for _, c := range typedCategory {
+	for i, c := range typedCategory {
+		if i >= count {
+			break
+		}
 		if len(c.Name) > longestName {
 			longestName = len(c.Name)
 		}
@@ -108,19 +211,6 @@ func wakatimeCategoryBar(count int, category interface{}) string {
 			longestTime = time
 		}
 	}
-	for i, c := range typedCategory {
-		typedCategory[i].Name = fmt.Sprintf("%-*s", longestName+2, c.Name)
-		typedCategory[i].Digital = fmt.Sprintf("%-*s", longestTime+2, formatTime(c.Hours, c.Minutes, c.Seconds))
-	}
 
-	// generate the lines in the format: name bar percent%
-	var lines []string
-	for _, c := range typedCategory {
-		lines = append(lines, fmt.Sprintf("%s %s %s", c.Name, c.Digital, bar(c.Percent, 25)))
-	}
-
-	if count < len(lines) {
-		return strings.Join(lines[:count], "\n")
-	}
-	return strings.Join(lines, "\n")
+	return longestName, longestTime
 }

@@ -70,3 +70,8 @@ type WakatimeMachines struct {
 	*WakatimeCategoryType
 	MachineNameID string `json:"machine_name_id"`
 }
+
+type WakatimeCategoryBlock struct {
+	Header string
+	Data   []WakatimeCategoryType
+}
